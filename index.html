@@ -45,7 +45,90 @@
 
   <body>
     <div id="map" class="map"></div>
-    <script>https://zax41006-bot.github.io/GHMWS-GIS/map.js</script>
+    <script>var imageryAPI = 'https://mapapi.geodata.gov.hk/gs/api/v1.0.0/xyz/imagery/wgs84/{z}/{x}/{y}.png';
+var attributionInfo = 'Image ©2002 NASA/USGS|Image ©2016 NASA/USGS|Contains modified Copernicus Sentinel data [2022]|<a href="https://api.portal.hkmapservice.gov.hk/disclaimer" target="_blank" class="copyrightDiv">&copy;Map information from Lands Department</a><img src="https://api.hkmapservice.gov.hk/mapapi/landsdlogo.jpg"></img>';
+var map = new ol.Map({
+    controls: ol.control.defaults.defaults({
+        attribution: false
+    }).extend([new ol.control.Attribution({
+        collapsible: false
+    })]),
+    layers: [
+        new ol.layer.Tile({
+            source: new ol.source.XYZ({
+                url: imageryAPI,
+                attributions: attributionInfo
+            })
+        }),
+    ],
+    target: 'map',
+    logo: false,
+    view: new ol.View({
+        center: ol.proj.fromLonLat([114.20847, 22.29227]),
+        zoom: 5,
+        minZoom: 0,
+        maxZoom: 7
+    })
+});
+fetch("https://api.knackwx.com/atcf/v2")
+    .then(response => response.json())
+    .then(data => {
+        // Process each storm in the array
+        data.forEach(storm => {
+            addStormMarker(storm.longitude, storm.latitude, storm.storm_name, storm.winds);
+        });
+    })
+    .catch(error => console.error("Error fetching KnackWX data:", error));
+const vectorSource = new ol.source.Vector();
+const vectorLayer = new ol.layer.Vector({
+    source: vectorSource
+});
+function getStormColor(winds) {
+    if (winds >= 140) return 'indigo';
+    if (winds >= 100) return 'purple';
+    if (winds >= 84)  return 'pink';
+    if (winds >= 64)  return 'red';
+    if (winds >= 47)  return 'blue';
+    if (winds >= 34)  return 'green';
+    if (winds >= 22)  return 'grey';
+    return 'white';
+}
+
+function addStormMarker(lon, lat, name, winds) {   
+    const dynamicColor = getStormColor(winds);
+    
+    const marker = new ol.Feature({
+        geometry: new ol.geom.Point(ol.proj.fromLonLat([parseFloat(lon), parseFloat(lat)])),
+        name: name
+    });
+
+    marker.setStyle(new ol.style.Style({
+        image: new ol.style.Circle({
+            radius: 7,
+            fill: new ol.style.Fill({ color: dynamicColor }),
+            stroke: new ol.style.Stroke({ color: 'black', width: 1.5 })
+        })
+    }));
+    
+    vectorSource.addFeature(marker);
+}
+fetch('https://api.rainviewer.com/public/weather-maps.json')
+    .then(response => response.json())
+    .then(data => {
+        // Get the latest frame
+        const latestFrame = data.radar.past[data.radar.past.length - 1];
+
+        // 3. Add Radar Layer
+        const radarLayer = new ol.layer.Tile({
+            source: new ol.source.XYZ({
+                // {host} from API, {path} from frame, zoom/x/y from OpenLayers
+                url: data.host + latestFrame.path + '/1024/{z}/{x}/{y}/7/1_0.png'
+            }),
+            opacity: 0.8
+        });
+        map.addLayer(radarLayer);
+    });
+map.addLayer(vectorLayer);</script>
   </body>
   
 </html>
