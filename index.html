@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html>
+
+  <head>
+    <meta charset="utf-8" />
+    <title>OpenLayers Sample using Imagery Map API</title>
+    <script src="https://cdn.jsdelivr.net/npm/ol@v10.2.1/dist/ol.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@v10.2.1/ol.css">
+    <style>
+    html,
+    body,
+    #map {
+      padding: 0 0;
+      margin: 0 0;
+      width: 100%;
+      height: 100%;
+    }
+
+    .ol-attribution.ol-uncollapsible {
+      height: auto;
+      background: transparent
+    }
+
+    .text-align {
+      color: #333;
+      font-size: 12px;
+      font-family: sans-serif;
+      text-align: right;
+    }
+
+    .ol-attribution ul {
+      font-size: 12px;
+      font-family: sans-serif;
+    }
+
+    .ol-attribution.ol-uncollapsible img {
+      max-height: 25px;
+    }
+
+    .ol-attribution a {
+      color: black;
+    }
+    </style>
+  </head>
+
+  <body>
+    <div id="map" class="map"></div>
+    <script>
+    var imageryAPI = 'https://mapapi.geodata.gov.hk/gs/api/v1.0.0/xyz/imagery/wgs84/{z}/{x}/{y}.png';
+    var attributionInfo = 'Image ©2002 NASA/USGS|Image ©2016 NASA/USGS|Contains modified Copernicus Sentinel data [2022]|<a href="https://api.portal.hkmapservice.gov.hk/disclaimer" target="_blank" class="copyrightDiv">&copy;Map information from Lands Department</a><img src="https://api.hkmapservice.gov.hk/mapapi/landsdlogo.jpg"></img>';
+    var map = new ol.Map({
+      controls: ol.control.defaults.defaults({
+        attribution: false
+      }).extend([new ol.control.Attribution({
+        collapsible: false
+      })]),
+      layers: [
+        new ol.layer.Tile({
+          source: new ol.source.XYZ({
+            url: imageryAPI,
+            attributions: attributionInfo
+          })
+        }),
+      ],
+      target: 'map',
+      logo: false,
+      view: new ol.View({
+        center: ol.proj.fromLonLat([114.20847, 22.29227]),
+        zoom: 5,
+        minZoom: 0,
+        maxZoom: 7
+      })
+    });
+    fetch('https://api.rainviewer.com/public/weather-maps.json')
+      .then(response => response.json())
+      .then(data => {
+        // Get the latest frame
+        const latestFrame = data.radar.past[data.radar.past.length - 1];
+
+        // 3. Add Radar Layer
+        const radarLayer = new ol.layer.Tile({
+          source: new ol.source.XYZ({
+            // {host} from API, {path} from frame, zoom/x/y from OpenLayers
+            url: data.host + latestFrame.path + '/1024/{z}/{x}/{y}/7/1_0.png'
+          }),
+          opacity: 0.8
+        });
+        map.addLayer(radarLayer);
+      });
+    map.addLayer(vectorLayer);
+    </script>
+  </body>
+
+</html>
