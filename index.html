@@ -70,65 +70,69 @@ var map = new ol.Map({
         maxZoom: 7
     })
 });
-fetch("https://api.knackwx.com/atcf/v2")
-    .then(response => response.json())
-    .then(data => {
-        // Process each storm in the array
-        data.forEach(storm => {
-            addStormMarker(storm.longitude, storm.latitude, storm.storm_name, storm.winds);
-        });
-    })
-    .catch(error => console.error("Error fetching KnackWX data:", error));
-const vectorSource = new ol.source.Vector();
-const vectorLayer = new ol.layer.Vector({
-    source: vectorSource
-});
 function getStormColor(winds) {
     if (winds >= 140) return 'indigo';
     if (winds >= 100) return 'purple';
-    if (winds >= 84)  return 'pink';
-    if (winds >= 64)  return 'red';
-    if (winds >= 47)  return 'blue';
-    if (winds >= 34)  return 'green';
-    if (winds >= 22)  return 'grey';
+    if (winds >= 84) return 'pink';
+    if (winds >= 64) return 'red';
+    if (winds >= 47) return 'blue';
+    if (winds >= 34) return 'green';
+    if (winds >= 22) return 'grey';
     return 'white';
 }
+fetch("https://api.knackwx.com/atcf/v2")
+    .then(response => response.json())
+    .then(data => {
+        data.forEach(storm => {
+            // 1. Create a Vector Layer for this storm's details (tracks, etc.)
+            const stormLayer = new ol.layer.Vector({
+                source: new ol.source.Vector(),
+                visible: true 
+            });
+            map.addLayer(stormLayer);
 
-function addStormMarker(lon, lat, name, winds) {   
-    const dynamicColor = getStormColor(winds);
-    
-    const marker = new ol.Feature({
-        geometry: new ol.geom.Point(ol.proj.fromLonLat([parseFloat(lon), parseFloat(lat)])),
-        name: name
+            // 2. Create the HTML for the Toggle Label
+            const element = document.createElement('div');
+            element.className = 'storm-overlay';
+            element.innerHTML = `
+                <div style="text-align: center;">
+                    <div style="width: 12px; height: 12px; background: ${getStormColor(storm.winds)}; border-radius: 50%; border: 1.5px solid black; margin: 0 auto;"></div>
+                    <div style="background: rgba(255,255,255,0.8); padding: 2px 5px; border-radius: 3px; font-size: 11px; margin-top: 2px;">
+                        <input type="checkbox" id="chk-${storm.atcf_id}" checked>
+                        <label for="chk-${storm.atcf_id}">${storm.storm_name}</label>
+                    </div>
+                </div>
+            `;
+
+            // 3. Create the Overlay and add to map
+            const overlay = new ol.Overlay({
+                position: ol.proj.fromLonLat([parseFloat(storm.longitude), parseFloat(storm.latitude)]),
+                positioning: 'bottom-center',
+                element: element,
+                stopEvent: true // Important: allows clicking the checkbox without clicking the map
+            });
+            map.addOverlay(overlay);
+
+            // 4. Link Checkbox to Layer Visibility
+            const checkbox = element.querySelector('input');
+            checkbox.addEventListener('change', (e) => {
+                stormLayer.setVisible(e.target.checked);
+            });
+        });
     });
-
-    marker.setStyle(new ol.style.Style({
-        image: new ol.style.Circle({
-            radius: 7,
-            fill: new ol.style.Fill({ color: dynamicColor }),
-            stroke: new ol.style.Stroke({ color: 'black', width: 1.5 })
-        })
-    }));
-    
-    vectorSource.addFeature(marker);
-}
+// 4. Fetch Radar (Run once, not inside the storm loop)
 fetch('https://api.rainviewer.com/public/weather-maps.json')
     .then(response => response.json())
     .then(data => {
-        // Get the latest frame
         const latestFrame = data.radar.past[data.radar.past.length - 1];
-
-        // 3. Add Radar Layer
         const radarLayer = new ol.layer.Tile({
             source: new ol.source.XYZ({
-                // {host} from API, {path} from frame, zoom/x/y from OpenLayers
                 url: data.host + latestFrame.path + '/1024/{z}/{x}/{y}/7/1_0.png'
             }),
-            opacity: 0.8
+            opacity: 0.6
         });
         map.addLayer(radarLayer);
-    });
-map.addLayer(vectorLayer);</script>
+    });</script>
   </body>
   
 </html>
