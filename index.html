@@ -94,18 +94,24 @@
 	<script>
 	var imageryAPI = 'https://mapapi.geodata.gov.hk/gs/api/v1.0.0/xyz/imagery/wgs84/{z}/{x}/{y}.png';
 	var attributionInfo = 'Image ©2002 NASA/USGS|Image ©2016 NASA/USGS|Contains modified Copernicus Sentinel data [2022]|<a href="https://api.portal.hkmapservice.gov.hk/disclaimer" target="_blank" class="copyrightDiv">&copy;Map information from Lands Department<\/a><img src="https://api.hkmapservice.gov.hk/mapapi/landsdlogo.jpg"><\/img>';
-	const intensityOrder = ['LPA', 'TD', 'TS', 'STS', 'TY', 'STY', 'SuTY'];
+
+// 2. Graticule Layer (Lat/Lon Grid)
+const graticuleLayer = new ol.layer.Graticule({
+    strokeStyle: new ol.style.Stroke({
+        color: 'rgba(255, 255, 255, 0.5)', // White lines are visible on imagery
+        width: 1,
+        lineDash: [4, 4],
+    }),
+    showLabels: true,
+    wrapX: true
+});
+
+// 3. Track Styling Logic
 const intensityColors = {
-    'LPA':  { color: '#90A4AE' },
-    'TD':   { color: '#FFEE58' },
-    'TS':   { color: '#42A5F5' },
-    'STS':  { color: '#66BB6A' },
-    'TY':   { color: '#FFA726' },
-    'STY':  { color: '#EF5350' },
-    'SuTY': { color: '#AB47BC' }
+    'LPA':  '#90A4AE', 'TD': '#FFEE58', 'TS': '#42A5F5',
+    'STS':  '#66BB6A', 'TY': '#FFA726', 'STY': '#EF5350', 'SuTY': '#AB47BC'
 };
 
-// --- 2. STYLE FUNCTION ---
 const trackStyleFunction = (feature) => {
     const status = feature.get('status'); 
     const level = feature.get('level') || 'LPA';
@@ -114,26 +120,24 @@ const trackStyleFunction = (feature) => {
     if (geomType === 'LineString') {
         return new ol.style.Style({
             stroke: new ol.style.Stroke({
-                color: '#555',
-                width: 3,
+                color: '#D30000', // White line to stand out on dark satellite
+                width: 2,
                 lineDash: status === 'forecast' ? [6, 6] : null
             })
         });
     }
 
-    let radius = (status === 'current') ? 10 : (status === 'past' ? 5 : 7);
-    let strokeWidth = (status === 'current') ? 3 : 1.5;
-
+    let radius = (status === 'current') ? 8 : (status === 'past' ? 4 : 6);
     return new ol.style.Style({
         image: new ol.style.Circle({
             radius: radius,
-            fill: new ol.style.Fill({ color: intensityColors[level].color }),
-            stroke: new ol.style.Stroke({ color: '#000', width: strokeWidth })
+            fill: new ol.style.Fill({ color: intensityColors[level] }),
+            stroke: new ol.style.Stroke({ color: '#000', width: 1.5 })
         })
     });
 };
 
-// --- 3. DATA INITIALIZATION ---
+// 4. Data Processing
 const pastData = [
     { lonLat: [165.2, 7.2], level: 'LPA' },
     { lonLat: [165.1, 7.5], level: 'LPA' },
@@ -176,9 +180,13 @@ const updateLineGeoms = () => {
 updateLineGeoms();
 
 const vectorSource = new ol.source.Vector({
-    features: [pastLine, forecastLine, ...pastPoints, currentPoint, ...forecastPoints]
+    features: [pastLine, ...pastPoints, currentPoint, forecastLine, ...forecastPoints]
 });
 
+const vectorLayer = new ol.layer.Vector({
+    source: vectorSource,
+    style: trackStyleFunction
+});
 // --- 4. MAP INITIALIZATION ---
 var map = new ol.Map({
     target: 'map',
@@ -198,8 +206,7 @@ var map = new ol.Map({
         new ol.layer.Vector({ 
             source: vectorSource, 
             style: trackStyleFunction 
-        })
-    ]
+        }),graticuleLayer]
 });
 
 // Add Legend
