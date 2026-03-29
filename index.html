@@ -185,7 +185,7 @@ const updateLineGeoms = () => {
 updateLineGeoms();
 
 const vectorSource = new ol.source.Vector({
-    features: [pastLine, ...pastPoints, currentPoint, forecastLine, ...forecastPoints]
+    features: []//pastLine, ...pastPoints, currentPoint, forecastLine, ...forecastPoints]
 });
 
 const vectorLayer = new ol.layer.Vector({
