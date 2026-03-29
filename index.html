@@ -95,124 +95,37 @@
 	var imageryAPI = 'https://mapapi.geodata.gov.hk/gs/api/v1.0.0/xyz/imagery/wgs84/{z}/{x}/{y}.png';
 	var attributionInfo = 'Image ©2002 NASA/USGS|Image ©2016 NASA/USGS|Contains modified Copernicus Sentinel data [2022]|<a href="https://api.portal.hkmapservice.gov.hk/disclaimer" target="_blank" class="copyrightDiv">&copy;Map information from Lands Department<\/a><img src="https://api.hkmapservice.gov.hk/mapapi/landsdlogo.jpg"><\/img>';
 
-// 2. Graticule Layer (Lat/Lon Grid)
-const graticuleLayer = new ol.layer.Graticule({
-    strokeStyle: new ol.style.Stroke({
-        color: 'rgba(255, 255, 255, 0.5)', // White lines are visible on imagery
-        width: 1,
-        lineDash: [4, 4],
-    }),
-    showLabels: true,
-    wrapX: true
-});
-
-// 3. Track Styling Logic
-const intensityColors = {
-    'LPA':  '#90A4AE', 'TD': '#FFEE58', 'TS': '#42A5F5',
-    'STS':  '#66BB6A', 'TY': '#FFA726', 'STY': '#EF5350', 'SuTY': '#AB47BC'
-};
-
-const trackStyleFunction = (feature) => {
-    const status = feature.get('status'); 
-    const level = feature.get('level') || 'LPA';
-    const geomType = feature.getGeometry().getType();
-
-    if (geomType === 'LineString') {
-        return new ol.style.Style({
-            stroke: new ol.style.Stroke({
-                color: '#D30000', // White line to stand out on dark satellite
-                width: 2,
-                lineDash: status === 'forecast' ? [6, 6] : null
-            })
-        });
-    }
-
-    let radius = (status === 'current') ? 8 : (status === 'past' ? 4 : 6);
-    return new ol.style.Style({
-        image: new ol.style.Circle({
-            radius: radius,
-            fill: new ol.style.Fill({ color: intensityColors[level] }),
-            stroke: new ol.style.Stroke({ color: '#000', width: 1.5 })
-        })
-    });
-};
-
-// 4. Data Processing
-const pastData = [
- //   { lonLat: [165.2, 7.2], level: 'LPA' },
- //   { lonLat: [165.1, 7.5], level: 'LPA' },
- //   { lonLat: [165.1, 7.7], level: 'LPA' },
- //   { lonLat: [165, 8.7], level: 'LPA' },
- //   { lonLat: [165, 8.9], level: 'LPA' },
- //   { lonLat: [164.9, 9.1], level: 'LPA' },
- //   { lonLat: [164.4, 9.2], level: 'LPA' },
- //   { lonLat: [163.9, 9.5], level: 'LPA' },
- //   { lonLat: [163, 9.2], level: 'LPA' },
- //   { lonLat: [162.6, 8.1], level: 'LPA' },
- //   {lonLat: [161.6, 7.9], level: 'LPA'},
- //   {lonLat: [161.1, 7.9], level: 'LPA'},
- //   {lonLat: [161, 8.6], level: 'LPA'}
-];
-const currentData = [
-];// { lonLat: [160.9, 8.3], level: 'LPA' }];
-const forecastData = [
-//    { lonLat: [161.5, 10.0], level: 'TY' },
-//    { lonLat: [159.0, 11.5], level: 'STY' }
-];
-
-const createFeat = (data, status) => {
-    const f = new ol.Feature(new ol.geom.Point(ol.proj.fromLonLat(data.lonLat)));
-    f.setProperties({ status: status, level: data.level });
-    return f;
-};
-
-const pastPoints = pastData.map(d => createFeat(d, 'past'));
-const currentPoint = createFeat(currentData, 'current');
-const forecastPoints = forecastData.map(d => createFeat(d, 'forecast'));
-
-const pastLine = new ol.Feature(new ol.geom.LineString([]));
-pastLine.set('status', 'past');
-const forecastLine = new ol.Feature(new ol.geom.LineString([]));
-forecastLine.set('status', 'forecast');
-
-const updateLineGeoms = () => {
-    const pCoords = pastPoints.map(p => p.getGeometry().getCoordinates());
-    const cCoord = currentPoint.getGeometry().getCoordinates();
-    const fCoords = forecastPoints.map(p => p.getGeometry().getCoordinates());
-    pastLine.getGeometry().setCoordinates([...pCoords, cCoord]);
-    forecastLine.getGeometry().setCoordinates([cCoord, ...fCoords]);
-};
-updateLineGeoms();
-
-const vectorSource = new ol.source.Vector({
-    features: []//pastLine, ...pastPoints, currentPoint, forecastLine, ...forecastPoints]
-});
-
-const vectorLayer = new ol.layer.Vector({
-    source: vectorSource,
-    style: trackStyleFunction
-});
-// --- 4. MAP INITIALIZATION ---
-var map = new ol.Map({
-    target: 'map',
-    view: new ol.View({
-        center: ol.proj.fromLonLat([114.17, 22.3]),
-        zoom: 5,
-	minZoom:1,
-	maxZoom:7
-    }),
-    controls: ol.control.defaults.defaults({ attribution: false }).extend([
-        new ol.control.Attribution({ collapsible: false })
-    ]),
-    layers: [
-        new ol.layer.Tile({
-            source: new ol.source.XYZ({ url: imageryAPI, attributions: attributionInfo })
+// 1. Graticule Layer (Lat/Lon Grid)
+    const graticuleLayer = new ol.layer.Graticule({
+        strokeStyle: new ol.style.Stroke({
+            color: 'rgba(255, 255, 255, 0.5)',
+            width: 1,
+            lineDash: [4, 4],
         }),
-        new ol.layer.Vector({ 
-            source: vectorSource, 
-            style: trackStyleFunction 
-        }),graticuleLayer]
-});
+        showLabels: true,
+        wrapX: true
+    });
+
+    // 2. Map Initialization (Cleaned of all track/vector references)
+    var map = new ol.Map({
+        target: 'map',
+        view: new ol.View({
+            center: ol.proj.fromLonLat([114.17, 22.3]),
+            zoom: 5,
+            minZoom: 1,
+            maxZoom: 7
+        }),
+        controls: ol.control.defaults.defaults({ attribution: false }).extend([
+            new ol.control.Attribution({ collapsible: false })
+        ]),
+        layers: [
+            new ol.layer.Tile({
+                source: new ol.source.XYZ({ url: imageryAPI, attributions: attributionInfo })
+            }),
+            graticuleLayer
+        ]
+    });
+// --- 4. MAP INITIALIZATION ---
 
 // Add Legend
 const legendControl = new ol.control.Control({ element: document.getElementById('legend') });
@@ -230,7 +143,8 @@ map.addControl(legendControl);
 	           opacity: 0.6
 	       });
 	       map.addLayer(radarLayer);
-	   });
+	   })
+	   .catch(err => console.error("Radar failed to load:", err));
 	</script> 
 </body>
 </html>
