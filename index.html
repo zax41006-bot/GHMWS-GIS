@@ -1,138 +1,112 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-	<meta charset="utf-8">
-	<title>OpenLayers Sample using Imagery Map API</title>
-	<script src="https://cdn.jsdelivr.net/npm/ol@v10.2.1/dist/ol.js">
-	</script>
-	<link href="https://cdn.jsdelivr.net/npm/ol@v10.2.1/ol.css" rel="stylesheet">
-	<style>
-	   html,
-	   body,
-	   #map {
-	     padding: 0 0;
-	     margin: 0 0;
-	     width: 100%;
-	     height: 100%;
-	   }
-
-	   .ol-attribution.ol-uncollapsible {
-	     height: auto;
-	     background: transparent
-	   }
-
-	   .text-align {
-	     color: #333;
-	     font-size: 12px;
-	     font-family: sans-serif;
-	     text-align: right;
-	   }
-
-	   .ol-attribution ul {
-	     font-size: 12px;
-	     font-family: sans-serif;
-	   }
-
-	   .ol-attribution.ol-uncollapsible img {
-	     max-height: 25px;
-	   }
-
-	   .ol-attribution a {
-	     color: black;
-	   }
-	  #legend {
-            position: absolute;
-            bottom: 20px;
-            right: 20px;
-            background: rgba(255, 255, 255, 0.9);
-            padding: 12px;
-            border-radius: 8px;
-            border: 1px solid #ccc;
-            z-index: 1000;
-            font-size: 12px;
-            font-family: sans-serif;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+    <meta charset="UTF-8">
+    <title>Storm Tracker Map</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@v10.8.0/ol.css">
+    <script src="https://cdn.jsdelivr.net/npm/ol@v10.8.0/dist/ol.js"></script>
+    <style>
+        body, html { margin: 0; padding: 0; height: 100%; width: 100%; overflow: hidden; background: #0b1621; }
+        #map { position: absolute; top: 0; bottom: 0; width: 100%; }
+        .controls {
+            position: absolute; top: 20px; left: 20px; z-index: 2000;
+            background: white; padding: 12px; border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3); font-family: sans-serif;
         }
-
-        .legend-title { font-weight: bold; margin-bottom: 8px; display: block; border-bottom: 1px solid #eee; padding-bottom: 4px; }
-        
-        .legend-item { display: flex; align-items: center; gap: 10px; margin-bottom: 5px; }
-
-        /* Mimics the OpenLayers Markers */
-        .marker-sample {
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            border: 1.5px solid #000;
-            display: inline-block;
-            flex-shrink: 0;
+        #legend {
+            position: absolute; bottom: 30px; right: 20px;
+            background: rgba(255, 255, 255, 0.95); padding: 15px;
+            border-radius: 8px; border: 1px solid #ccc;
+            z-index: 2000; font-size: 12px; font-family: sans-serif;
         }
-
-        /* Line samples for Past vs Forecast */
+        .legend-title { font-weight: bold; margin-bottom: 8px; display: block; border-bottom: 1px solid #eee; padding-bottom: 5px; }
+        .legend-item { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+        .marker-sample { width: 14px; height: 14px; border-radius: 50%; border: 1px solid #333; }
         .line-sample { width: 25px; height: 0; border-top: 3px solid #555; }
         .dashed { border-top: 3px dashed #555; }
-        
-        .ol-attribution img { max-height: 25px; }
-	</style>
+    </style>
 </head>
 <body>
-	<div class="map" id="map"></div>
-	<div id="legend">
+
+    <div class="controls">
+        <label style="font-weight:bold">Center Location: </label>
+        <select id="location-select" style="padding: 5px; cursor: pointer;">
+            <option value="114.1745,22.3023">Hong Kong</option>
+            <option value="113.5803,22.1567">Macau</option>
+            <option value="114.07,22.62">Shenzhen</option>
+            <option value="113.25,23.1167">Guangzhou</option>
+        </select>
+    </div>
+
+    <div id="map"></div>
+    
+    <div id="legend">
         <span class="legend-title">Track Status</span>
         <div class="legend-item"><div class="line-sample"></div> Past</div>
         <div class="legend-item"><div class="line-sample dashed"></div> Forecast</div>
-        
         <span class="legend-title" style="margin-top:10px;">Intensity (km/h)</span>
         <div class="legend-item"><div class="marker-sample" style="background:#AB47BC"></div> SuTY (>=185)</div>
         <div class="legend-item"><div class="marker-sample" style="background:#EF5350"></div> STY (150-184)</div>
         <div class="legend-item"><div class="marker-sample" style="background:#FFA726"></div> TY (118-149)</div>
         <div class="legend-item"><div class="marker-sample" style="background:#66BB6A"></div> STS (88-117)</div>
         <div class="legend-item"><div class="marker-sample" style="background:#42A5F5"></div> TS (63-87)</div>
-        <div class="legend-item"><div class="marker-sample" style="background:#FFEE58"></div> TD (41-62)</div>
-        <div class="legend-item"><div class="marker-sample" style="background:#90A4AE"></div> LPA (&lt;41)</div>
+	    <div class="legend-item"><div class="marker-sample" style="background:#FFEE58"></div> TD (41-62)</div>
+        <div class="legend-item"><div class="marker-sample" style="background:#90A4AE"></div> LPA (<41)</div>
     </div>
-	<script>
-	var imageryAPI = 'https://mapapi.geodata.gov.hk/gs/api/v1.0.0/xyz/imagery/wgs84/{z}/{x}/{y}.png';
-	var attributionInfo = 'Image ©2002 NASA/USGS|Image ©2016 NASA/USGS|Contains modified Copernicus Sentinel data [2022]|<a href="https://api.portal.hkmapservice.gov.hk/disclaimer" target="_blank" class="copyrightDiv">&copy;Map information from Lands Department<\/a><img src="https://api.hkmapservice.gov.hk/mapapi/landsdlogo.jpg"><\/img>';
 
-// 1. Graticule Layer (Lat/Lon Grid)
-    const graticuleLayer = new ol.layer.Graticule({
-        strokeStyle: new ol.style.Stroke({
-            color: 'rgba(255, 255, 255, 0.5)',
-            width: 1,
-            lineDash: [4, 4],
-        }),
-        showLabels: true,
-        wrapX: true
-    });
+    <script>
+        // 1. Define Layers FIRST
+        var osmLayer = new ol.layer.Tile({ source: new ol.source.OSM() });
+        
+        const graticuleLayer = new ol.layer.Graticule({
+            strokeStyle: new ol.style.Stroke({ color: 'rgba(0,0,0,0.2)', width: 1, lineDash: [0.5, 4] }),
+            showLabels: true,
+            wrapX: false
+        });
 
-    // 2. Map Initialization (Cleaned of all track/vector references)
-    var map = new ol.Map({
-        target: 'map',
-        view: new ol.View({
-            center: ol.proj.fromLonLat([114.17, 22.3]),
-            zoom: 5,
-            minZoom: 1,
-            maxZoom: 7
-        }),
-        controls: ol.control.defaults.defaults({ attribution: false }).extend([
-            new ol.control.Attribution({ collapsible: false })
-        ]),
-        layers: [
-            new ol.layer.Tile({
-                source: new ol.source.XYZ({ url: imageryAPI, attributions: attributionInfo })
-            }),
-            graticuleLayer
-        ]
-    });
-// --- 4. MAP INITIALIZATION ---
+        const ringSource = new ol.source.Vector();
+        const ringLayer = new ol.layer.Vector({ source: ringSource });
 
-// Add Legend
-const legendControl = new ol.control.Control({ element: document.getElementById('legend') });
-map.addControl(legendControl);
+        // 2. Initialize Map
+        var map = new ol.Map({
+            target: 'map',
+            layers: [osmLayer, graticuleLayer, ringLayer],
+            view: new ol.View({
+                center: ol.proj.fromLonLat([114.17, 22.3]),
+                zoom: 5,
+                minZoom: 1,
+                maxZoom: 7
+            })
+        });
 
-	// 4. Fetch Radar (Run once, not inside the storm loop)
-	fetch('https://api.rainviewer.com/public/weather-maps.json')
+        // 3. Draw Range Rings Function
+        function drawRings(lonLat) {
+            ringSource.clear();
+            const radii = [800000, 400000, 200000, 100000]; 
+            radii.forEach((r, i) => {
+                const feat = new ol.Feature({
+                    geometry: ol.geom.Polygon.circular(lonLat, r).transform('EPSG:4326', 'EPSG:3857')
+                });
+                feat.setStyle(new ol.style.Style({
+                    stroke: new ol.style.Stroke({ color: 'red', width: 2, lineDash: [10, 10] }),
+                    fill: new ol.style.Fill({ color: `rgba(255,0,0,${0.1 - (i*0.02)})` })
+                }));
+                ringSource.addFeature(feat);
+            });
+            map.getView().animate({ center: ol.proj.fromLonLat(lonLat), duration: 500 });
+        }
+
+        // Initial Rings
+        drawRings([114.17, 22.3]);
+
+        // Dropdown Listener
+        document.getElementById('location-select').onchange = function(e) {
+            const coords = e.target.value.split(',').map(Number);
+            drawRings(coords);
+        };
+
+        // 4. Corrected RainViewer Radar Fetch
+        fetch('https://api.rainviewer.com/public/weather-maps.json')
 	   .then(response => response.json())
 	   .then(data => {
 	       const latestFrame = data.radar.past[data.radar.past.length - 1];
@@ -145,6 +119,6 @@ map.addControl(legendControl);
 	       map.addLayer(radarLayer);
 	   })
 	   .catch(err => console.error("Radar failed to load:", err));
-	</script> 
+    </script>
 </body>
 </html>
