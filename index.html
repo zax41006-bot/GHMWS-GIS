@@ -2,13 +2,19 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Storm Map - Rectangle Only</title>
+    <title>Storm Map - Track & Toggle</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@v10.8.0/ol.css">
     <script src="https://cdn.jsdelivr.net/npm/ol@v10.8.0/dist/ol.js"></script>
     <style>
         body, html { margin: 0; padding: 0; height: 100%; width: 100%; overflow: hidden; background: #0b1621; }
         #map { position: absolute; top: 0; bottom: 0; width: 100%; }
         
+        .controls {
+            position: absolute; top: 20px; left: 20px; z-index: 2000;
+            background: white; padding: 12px; border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3); font-family: sans-serif;
+        }
+
         #legend {
             position: absolute; bottom: 30px; right: 20px;
             background: rgba(255, 255, 255, 0.9); padding: 15px;
@@ -18,40 +24,80 @@
         .legend-title { font-weight: bold; margin-bottom: 8px; display: block; border-bottom: 1px solid #eee; padding-bottom: 5px; }
         .legend-item { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
         .marker-sample { width: 14px; height: 14px; border-radius: 50%; border: 1px solid #333; }
+        .line-sample { width: 25px; height: 3px; background: #555; }
+        .dashed { border-top: 3px dashed #555; background: transparent; height: 0; }
     </style>
 </head>
 <body>
 
+    <div class="controls">
+        <input type="checkbox" id="toggle-labels" checked>
+        <label for="toggle-labels" style="font-weight:bold; cursor:pointer;"> Show Intensities</label>
+    </div>
+
     <div id="map"></div>
     
     <div id="legend">
-        <span class="legend-title">Intensity (km/h)</span>
+        <span class="legend-title">Track Status</span>
+        <div class="legend-item"><div class="line-sample"></div> Past</div>
+        <div class="legend-item"><div class="line-sample dashed"></div> Forecast</div>
+        <span class="legend-title" style="margin-top:10px;">Intensity (km/h)</span>
         <div class="legend-item"><div class="marker-sample" style="background:#AB47BC"></div> SuTY (>=185)</div>
         <div class="legend-item"><div class="marker-sample" style="background:#EF5350"></div> STY (150-184)</div>
         <div class="legend-item"><div class="marker-sample" style="background:#FFA726"></div> TY (118-149)</div>
         <div class="legend-item"><div class="marker-sample" style="background:#66BB6A"></div> STS (88-117)</div>
         <div class="legend-item"><div class="marker-sample" style="background:#42A5F5"></div> TS (63-87)</div>
-	<div class="legend-item"><div class="marker-sample" style="background:#FFEE58"></div> TD (41-62)</div>
-	<div class="legend-item"><div class="marker-sample" style="background:#90A4AE"></div> LPA (40 or less)</div>
+        <div class="legend-item"><div class="marker-sample" style="background:#FFEE58"></div> TD (41-62)</div>
+        <div class="legend-item"><div class="marker-sample" style="background:#90A4AE"></div> LPA (<=40)</div>
     </div>
 
     <script>
-	const lonLat = [114.1745, 22.3025];
-        // 1. Define Layers First
-        var osmLayer = new ol.layer.Tile({ source: new ol.source.OSM() });
+        const lonLat = [114.1745, 22.3025];
         
+        // 1. Storm Data
+        const stormData = {
+            past: [
+                { coords: [156.2, 4.1], intensity: 35 }, // LPA
+        	 { coords: [155.2, 4.3], intensity: 35 }, // TS
+        	 { coords: [154.1, 5], intensity: 35 },
+		 { coords: [153.4, 5.7], intensity: 35 },
+		 { coords: [153, 6.4], intensity: 35 },
+		 { coords: [153.3, 7.5], intensity: 40 },
+		 { coords: [153, 8.6], intensity: 45 } 
+            ],
+            forecast: [
+                { coords: [153, 8.6], intensity: 45 }, // STY
+        { coords: [151.7, 8.2], intensity: 65 },
+	{ coords: [150.8, 8.8], intensity: 75 },
+	{ coords: [150.1, 9.2], intensity: 90 },
+	{ coords: [148.3, 10.7], intensity: 120 },
+	{ coords: [145.1, 12.7], intensity: 130 }
+            ]
+        };
+
+        function getIntensityColor(w) {
+            if (w >= 185) return '#AB47BC';
+            if (w >= 150) return '#EF5350';
+            if (w >= 118) return '#FFA726';
+            if (w >= 88)  return '#66BB6A';
+            if (w >= 63)  return '#42A5F5';
+            if (w >= 41)  return '#FFEE58';
+            return '#90A4AE';
+        }
+
+        // 2. Define Layers
+        const osmLayer = new ol.layer.Tile({ source: new ol.source.OSM() });
+        const trackSource = new ol.source.Vector();
         const graticuleLayer = new ol.layer.Graticule({
             strokeStyle: new ol.style.Stroke({ color: 'rgba(0,0,0,0.2)', width: 1, lineDash: [4, 4] }),
             showLabels: true
         });
 
-        // 2. Create the Single Rectangle (Bounding Box)
-        const extent = [106,17,120,27.5];
-        
+        // Bounding Box
+        const extent = [106, 17, 120, 27.5];
         const boxFeature = new ol.Feature({
             geometry: ol.geom.Polygon.fromExtent(extent).transform('EPSG:4326', 'EPSG:3857')
         });
-
         boxFeature.setStyle(new ol.style.Style({
             stroke: new ol.style.Stroke({ color: '#ff0000', width: 3 }),
             fill: new ol.style.Fill({ color: 'rgba(255, 0, 0, 0.01)' })
@@ -62,10 +108,15 @@
             zIndex: 5
         });
 
+        const trackLayer = new ol.layer.Vector({
+            source: trackSource,
+            zIndex: 10
+        });
+
         // 3. Initialize Map
-        var map = new ol.Map({
+        const map = new ol.Map({
             target: 'map',
-            layers: [osmLayer, graticuleLayer, vectorLayer],
+            layers: [osmLayer, graticuleLayer, vectorLayer, trackLayer],
             view: new ol.View({
                 center: ol.proj.fromLonLat(lonLat),
                 zoom: 5,
@@ -74,20 +125,59 @@
             })
         });
 
-        // 4. Fetch RainViewer Radar
+        // 4. Drawing Logic
+        function drawTrack() {
+            trackSource.clear();
+            const showLabels = document.getElementById('toggle-labels').checked;
+
+            // Lines
+            const pastLine = new ol.Feature({ geometry: new ol.geom.LineString(stormData.past.map(p => ol.proj.fromLonLat(p.coords))) });
+            pastLine.setStyle(new ol.style.Style({ stroke: new ol.style.Stroke({ color: '#555', width: 3 }) }));
+
+            const forecastLine = new ol.Feature({ geometry: new ol.geom.LineString(stormData.forecast.map(p => ol.proj.fromLonLat(p.coords))) });
+            forecastLine.setStyle(new ol.style.Style({ stroke: new ol.style.Stroke({ color: '#555', width: 3, lineDash: [5, 5] }) }));
+
+            trackSource.addFeatures([pastLine, forecastLine]);
+
+            // Markers
+            [...stormData.past, ...stormData.forecast].forEach(point => {
+                const marker = new ol.Feature({ geometry: new ol.geom.Point(ol.proj.fromLonLat(point.coords)) });
+                marker.setStyle(new ol.style.Style({
+                    image: new ol.style.Circle({
+                        radius: 6,
+                        fill: new ol.style.Fill({ color: getIntensityColor(point.intensity) }),
+                        stroke: new ol.style.Stroke({ color: '#333', width: 1 })
+                    }),
+                    text: showLabels ? new ol.style.Text({
+                        text: point.intensity.toString(),
+                        offsetY: -12,
+                        font: 'bold 11px sans-serif',
+                        fill: new ol.style.Fill({ color: '#fff' }),
+                        stroke: new ol.style.Stroke({ color: '#000', width: 3 })
+                    }) : null
+                }));
+                trackSource.addFeature(marker);
+            });
+        }
+
+        // Toggle Listener
+        document.getElementById('toggle-labels').onchange = drawTrack;
+
+        // 5. Initial Load & Radar
+        drawTrack();
+
         fetch('https://api.rainviewer.com/public/weather-maps.json')
-	   .then(response => response.json())
-	   .then(data => {
-	       const latestFrame = data.radar.past[data.radar.past.length - 1];
-	       const radarLayer = new ol.layer.Tile({
-	           source: new ol.source.XYZ({
-	               url: data.host + latestFrame.path + '/1024/{z}/{x}/{y}/7/1_0.png'
-	           }),
-	           opacity: 0.6
-	       });
-	       map.addLayer(radarLayer);
-	   })
-	   .catch(err => console.error("Radar failed to load:", err));
+           .then(response => response.json())
+           .then(data => {
+               const latestFrame = data.radar.past[data.radar.past.length - 1];
+               const radarLayer = new ol.layer.Tile({
+                   source: new ol.source.XYZ({
+                       url: data.host + latestFrame.path + '/1024/{z}/{x}/{y}/7/1_0.png'
+                   }),
+                   opacity: 0.5
+               });
+               map.getLayers().insertAt(1, radarLayer); // Put radar behind the track
+           });
     </script>
 </body>
 </html>
