@@ -2,9 +2,9 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Storm Map - Track & Toggle</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@v10.8.0/ol.css">
-    <script src="https://cdn.jsdelivr.net/npm/ol@v10.8.0/dist/ol.js"></script>
+    <title>Storm Map - Track & Coordinates</title>
+    <link rel="stylesheet" href="https://jsdelivr.net">
+    <script src="https://jsdelivr.net"></script>
     <style>
         body, html { margin: 0; padding: 0; height: 100%; width: 100%; overflow: hidden; background: #0b1621; }
         #map { position: absolute; top: 0; bottom: 0; width: 100%; }
@@ -32,7 +32,7 @@
 
     <div class="controls">
         <input type="checkbox" id="toggle-labels" checked>
-        <label for="toggle-labels" style="font-weight:bold; cursor:pointer;"> Show Intensities</label>
+        <label for="toggle-labels" style="font-weight:bold; cursor:pointer;"> Show Data Labels</label>
     </div>
 
     <div id="map"></div>
@@ -54,7 +54,6 @@
     <script>
         const lonLat = [114.1745, 22.3025];
         
-        // 1. Storm Data
         const stormData = {
             past: [
                 { coords: [156.2, 4.1], intensity: 35 }, // LPA
@@ -85,15 +84,13 @@
             return '#90A4AE';
         }
 
-        // 2. Define Layers
         const osmLayer = new ol.layer.Tile({ source: new ol.source.OSM() });
         const trackSource = new ol.source.Vector();
         const graticuleLayer = new ol.layer.Graticule({
-            strokeStyle: new ol.style.Stroke({ color: 'rgba(0,0,0,0.2)', width: 1, lineDash: [4, 4] }),
+            strokeStyle: new ol.style.Stroke({ color: 'rgba(0,0,0,0.2)', width: 1, lineDash: [4,4] }),
             showLabels: true
         });
 
-        // Bounding Box
         const extent = [106, 17, 120, 27.5];
         const boxFeature = new ol.Feature({
             geometry: ol.geom.Polygon.fromExtent(extent).transform('EPSG:4326', 'EPSG:3857')
@@ -113,7 +110,6 @@
             zIndex: 10
         });
 
-        // 3. Initialize Map
         const map = new ol.Map({
             target: 'map',
             layers: [osmLayer, graticuleLayer, vectorLayer, trackLayer],
@@ -125,23 +121,25 @@
             })
         });
 
-        // 4. Drawing Logic
         function drawTrack() {
             trackSource.clear();
             const showLabels = document.getElementById('toggle-labels').checked;
 
-            // Lines
             const pastLine = new ol.Feature({ geometry: new ol.geom.LineString(stormData.past.map(p => ol.proj.fromLonLat(p.coords))) });
             pastLine.setStyle(new ol.style.Style({ stroke: new ol.style.Stroke({ color: '#555', width: 3 }) }));
 
             const forecastLine = new ol.Feature({ geometry: new ol.geom.LineString(stormData.forecast.map(p => ol.proj.fromLonLat(p.coords))) });
-            forecastLine.setStyle(new ol.style.Style({ stroke: new ol.style.Stroke({ color: '#555', width: 3, lineDash: [5, 5] }) }));
+            forecastLine.setStyle(new ol.style.Style({ stroke: new ol.style.Stroke({ color: '#555', width: 3, lineDash: [5,5] }) }));
 
             trackSource.addFeatures([pastLine, forecastLine]);
 
-            // Markers
             [...stormData.past, ...stormData.forecast].forEach(point => {
                 const marker = new ol.Feature({ geometry: new ol.geom.Point(ol.proj.fromLonLat(point.coords)) });
+                
+                // Create label text: "Intensity km/h \n Lon, Lat"
+                const labelText = showLabels ? 
+                    `${point.intensity} km/h\n${point.coords[1].toFixed(1)}°N, ${point.coords[0].toFixed(1)}°E` : '';
+
                 marker.setStyle(new ol.style.Style({
                     image: new ol.style.Circle({
                         radius: 6,
@@ -149,24 +147,23 @@
                         stroke: new ol.style.Stroke({ color: '#333', width: 1 })
                     }),
                     text: showLabels ? new ol.style.Text({
-                        text: point.intensity.toString(),
-                        offsetY: -12,
+                        text: labelText,
+                        offsetY: -25, // Adjusted to fit two lines
                         font: 'bold 11px sans-serif',
                         fill: new ol.style.Fill({ color: '#fff' }),
-                        stroke: new ol.style.Stroke({ color: '#000', width: 3 })
+                        stroke: new ol.style.Stroke({ color: '#000', width: 3 }),
+                        textAlign: 'center'
                     }) : null
                 }));
                 trackSource.addFeature(marker);
             });
         }
 
-        // Toggle Listener
         document.getElementById('toggle-labels').onchange = drawTrack;
 
-        // 5. Initial Load & Radar
         drawTrack();
 
-        fetch('https://api.rainviewer.com/public/weather-maps.json')
+        fetch('https://rainviewer.com')
            .then(response => response.json())
            .then(data => {
                const latestFrame = data.radar.past[data.radar.past.length - 1];
@@ -176,7 +173,7 @@
                    }),
                    opacity: 0.5
                });
-               map.getLayers().insertAt(1, radarLayer); // Put radar behind the track
+               map.getLayers().insertAt(1, radarLayer);
            });
     </script>
 </body>
