@@ -163,7 +163,7 @@
 
         drawTrack();
 
-        fetch('https://rainviewer.com')
+        fetch('https://api.rainviewer.com/public/weather-maps.json')
            .then(response => response.json())
            .then(data => {
                const latestFrame = data.radar.past[data.radar.past.length - 1];
