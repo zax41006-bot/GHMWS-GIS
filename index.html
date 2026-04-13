@@ -2,25 +2,32 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Storm Map - Track & Coordinates</title>
+    <title>Storm Map - Track & Pop-ups</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@v10.8.0/ol.css">
     <script src="https://cdn.jsdelivr.net/npm/ol@v10.8.0/dist/ol.js"></script>
     <style>
         body, html { margin: 0; padding: 0; height: 100%; width: 100%; overflow: hidden; background: #0b1621; }
         #map { position: absolute; top: 0; bottom: 0; width: 100%; }
         
-        .controls {
-            position: absolute; top: 20px; left: 20px; z-index: 2000;
-            background: white; padding: 12px; border-radius: 8px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3); font-family: sans-serif;
+        /* Pop-up Styling */
+        .ol-popup {
+            position: absolute; background-color: white; padding: 15px;
+            border-radius: 10px; border: 1px solid #cccccc;
+            bottom: 12px; left: -50px; min-width: 180px;
+            font-family: sans-serif; box-shadow: 0 1px 4px rgba(0,0,0,0.2);
         }
+        .ol-popup:after, .ol-popup:before {
+            top: 100%; border: solid transparent; content: " ";
+            height: 0; width: 0; position: absolute; pointer-events: none;
+        }
+        .ol-popup:after { border-top-color: white; border-width: 10px; left: 48px; margin-left: -10px; }
+        .ol-popup:before { border-top-color: #cccccc; border-width: 11px; left: 48px; margin-left: -11px; }
+        .ol-popup-closer { text-decoration: none; position: absolute; top: 2px; right: 8px; color: #333; }
+        .popup-title { font-weight: bold; color: #d32f2f; margin-bottom: 5px; display: block; }
+        .popup-item { font-size: 13px; margin: 3px 0; }
 
-        #legend {
-            position: absolute; bottom: 30px; right: 20px;
-            background: rgba(255, 255, 255, 0.9); padding: 15px;
-            border-radius: 8px; border: 1px solid #ccc;
-            z-index: 1000; font-size: 12px; font-family: sans-serif;
-        }
+        .controls { position: absolute; top: 20px; left: 20px; z-index: 2000; background: white; padding: 12px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3); font-family: sans-serif; }
+        #legend { position: absolute; bottom: 30px; right: 20px; background: rgba(255, 255, 255, 0.9); padding: 15px; border-radius: 8px; border: 1px solid #ccc; z-index: 1000; font-size: 12px; font-family: sans-serif; }
         .legend-title { font-weight: bold; margin-bottom: 8px; display: block; border-bottom: 1px solid #eee; padding-bottom: 5px; }
         .legend-item { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
         .marker-sample { width: 14px; height: 14px; border-radius: 50%; border: 1px solid #333; }
@@ -32,10 +39,17 @@
 
     <div class="controls">
         <input type="checkbox" id="toggle-labels" checked>
-        <label for="toggle-labels" style="font-weight:bold; cursor:pointer;"> Show Data Labels</label>
+        <label for="toggle-labels" style="font-weight:bold; cursor:pointer;"> Show Simple Labels</label>
+        <p style="font-size: 11px; margin: 5px 0 0 0;">(Click markers for full details)</p>
     </div>
 
     <div id="map"></div>
+
+    <!-- Pop-up HTML Structure -->
+    <div id="popup" class="ol-popup">
+        <a href="#" id="popup-closer" class="ol-popup-closer">✖</a>
+        <div id="popup-content"></div>
+    </div>
     
     <div id="legend">
         <span class="legend-title">Track Status</span>
@@ -54,31 +68,35 @@
     <script>
         const lonLat = [114.1745, 22.3025];
         
+        // Added 'time' property to your data
         const stormData = {
             past: [
-                { coords: [156.2, 4.1], intensity: 35 }, // LPA
-        	 { coords: [155.2, 4.3], intensity: 35 }, // TS
-        	 { coords: [154.1, 5], intensity: 35 },
-		 { coords: [153.4, 5.7], intensity: 35 },
-		 { coords: [153, 6.4], intensity: 35 },
-		 { coords: [153.3, 7.5], intensity: 40 },
-		 { coords: [153, 8.6], intensity: 45 },
-         { coords: [152.1, 8.7], intensity: 50},
-         { coords: [151.3, 8], intensity: 60},
-         { coords: [151, 8], intensity: 60},
-         { coords: [150.4, 8], intensity: 65},
-         { coords: [150.6, 8.1], intensity: 105},
-         { coords: [151.3, 8.1], intensity: 105},
-         { coords: [151.5, 8.4], intensity: 110},
-
+                { coords: [153, 8.6], intensity: 45, time: "2026-4-8 20:00" },
+                { coords: [152.1, 8.7], intensity: 50, time: "2026-4-9 08:00" },
+		{ coords: [151.3, 8], intensity: 60, time: "2026-4-9 20:00" },
+		{ coords: [151, 8], intensity: 60, time: "2026-4-10 08:00" },
+		{ coords: [150.4, 8], intensity: 65, time: "2026-4-10 14:00" },
+		{ coords: [150.6, 8.1], intensity: 105, time: "2026-4-10 20:00" },
+		{ coords: [151.3, 8.1], intensity: 105, time: "2026-4-11 02:00" },
+		{ coords: [151.5, 8.4], intensity: 110, time: "2026-4-11 08:00" },
+		{ coords: [151.6, 8.7], intensity: 130, time: "2026-4-11 20:00" },
+		{ coords: [151.4, 8.9], intensity: 145, time: "2026-4-12 02:00" },
+		{ coords: [151, 9.9], intensity: 180, time: "2026-4-12 08:00" },
+		{ coords: [150.8, 10.2], intensity: 220, time: "2026-4-12 14:00" },
+		{ coords: [150.5, 10.5], intensity: 250, time: "2026-4-12 17:00" },
+		{ coords: [150.2, 11.1], intensity: 260, time: "2026-4-12 20:00" },
+		{ coords: [149.5, 11.6], intensity: 260, time: "2026-4-13 02:00" },
+		{ coords: [148.5, 12.1], intensity: 260, time: "2026-4-13 08:00" },
+		{ coords: [147.8, 12.8], intensity: 250, time: "2026-4-13 17:00" },
+		{ coords: [147.6, 13.1], intensity: 240, time: "2026-4-13 20:00" },
             ],
             forecast: [
-                { coords: [151.5, 8.4], intensity: 110} ,
-                { coords: [150.5, 9.8], intensity: 145 }, 
-        { coords: [148.5, 11.9], intensity: 195 },
-        { coords: [145.3, 13.8], intensity: 195 },
-	{ coords: [143.4, 15.1], intensity: 195 },
-    { coords: [142.1, 17.1], intensity: 185 }
+                { coords: [147.6, 13.1], intensity: 240, time: "2026-4-13 20:00" }, 
+                { coords: [145.9, 15.2], intensity: 230, time: "2026-4-14 20:00" },
+		{ coords: [144.9, 17], intensity: 195, time: "2024-4-15 20:00" },
+		{ coords: [145.2, 19.6], intensity:155 , time: "2024-4-16 20:00" },
+		{ coords: [147.6, 22.4], intensity:120, time: "2024-4-17 20:00" },
+		{ coords: [150.4, 25.2], intensity: 105, time: "2024-4-18 20:00" },
             ]
         };
 
@@ -92,97 +110,107 @@
             return '#90A4AE';
         }
 
-        const osmLayer = new ol.layer.Tile({ source: new ol.source.OSM() });
+        // --- MAP SETUP ---
+        const container = document.getElementById('popup');
+        const content = document.getElementById('popup-content');
+        const closer = document.getElementById('popup-closer');
+        const overlay = new ol.Overlay({
+            element: container,
+            autoPan: { animation: { duration: 250 } }
+        });
+
+        closer.onclick = function() {
+            overlay.setPosition(undefined);
+            return false;
+        };
+
         const trackSource = new ol.source.Vector();
-        const graticuleLayer = new ol.layer.Graticule({
-            strokeStyle: new ol.style.Stroke({ color: 'rgba(0,0,0,0.2)', width: 1, lineDash: [4,4] }),
-            showLabels: true
-        });
-
-        const extent = [106, 17, 120, 27.5];
-        const boxFeature = new ol.Feature({
-            geometry: ol.geom.Polygon.fromExtent(extent).transform('EPSG:4326', 'EPSG:3857')
-        });
-        boxFeature.setStyle(new ol.style.Style({
-            stroke: new ol.style.Stroke({ color: '#ff0000', width: 3 }),
-            fill: new ol.style.Fill({ color: 'rgba(255, 0, 0, 0.01)' })
-        }));
-
-        const vectorLayer = new ol.layer.Vector({
-            source: new ol.source.Vector({ features: [boxFeature] }),
-            zIndex: 5
-        });
-
-        const trackLayer = new ol.layer.Vector({
-            source: trackSource,
-            zIndex: 10
-        });
-
         const map = new ol.Map({
             target: 'map',
-            layers: [osmLayer, graticuleLayer, vectorLayer, trackLayer],
-            view: new ol.View({
-                center: ol.proj.fromLonLat(lonLat),
-                zoom: 5,
-                minZoom: 1,
-                maxZoom: 7
-            })
+            layers: [
+                new ol.layer.Tile({ source: new ol.source.OSM() }),
+                new ol.layer.Vector({ source: trackSource, zIndex: 10 })
+            ],
+            overlays: [overlay],
+            view: new ol.View({ center: ol.proj.fromLonLat([150, 10]), zoom: 4,maxZoom:7 })
         });
 
         function drawTrack() {
             trackSource.clear();
             const showLabels = document.getElementById('toggle-labels').checked;
 
+            // 1. Past Track (Solid Line)
             const pastLine = new ol.Feature({ geometry: new ol.geom.LineString(stormData.past.map(p => ol.proj.fromLonLat(p.coords))) });
             pastLine.setStyle(new ol.style.Style({ stroke: new ol.style.Stroke({ color: '#555', width: 3 }) }));
+            trackSource.addFeature(pastLine);
 
+            // 2. Forecast Track (Dashed Line)
             const forecastLine = new ol.Feature({ geometry: new ol.geom.LineString(stormData.forecast.map(p => ol.proj.fromLonLat(p.coords))) });
-            forecastLine.setStyle(new ol.style.Style({ stroke: new ol.style.Stroke({ color: '#555', width: 3, lineDash: [5,5] }) }));
+            forecastLine.setStyle(new ol.style.Style({ 
+                stroke: new ol.style.Stroke({ color: '#555', width: 3, lineDash: [8, 8] }) 
+            }));
+            trackSource.addFeature(forecastLine);
 
-            trackSource.addFeatures([pastLine, forecastLine]);
+            // 3. Markers
+            const allPoints = [
+                ...stormData.past.map(p => ({...p, status: 'Past'})), 
+                ...stormData.forecast.slice(1).map(p => ({...p, status: 'Forecast'}))
+            ];
 
-            [...stormData.past, ...stormData.forecast].forEach(point => {
+            allPoints.forEach(point => {
                 const marker = new ol.Feature({ geometry: new ol.geom.Point(ol.proj.fromLonLat(point.coords)) });
-                
-                // Create label text: "Intensity km/h \n Lon, Lat"
-                const labelText = showLabels ? 
-                    `${point.intensity} km/h\n${point.coords[1].toFixed(1)}°N, ${point.coords[0].toFixed(1)}°E` : '';
+                marker.set('stormInfo', point); // Store data for pop-up
 
                 marker.setStyle(new ol.style.Style({
                     image: new ol.style.Circle({
                         radius: 6,
                         fill: new ol.style.Fill({ color: getIntensityColor(point.intensity) }),
-                        stroke: new ol.style.Stroke({ color: '#333', width: 1 })
+                        stroke: new ol.style.Stroke({ color: '#333', width: 1.5 })
                     }),
                     text: showLabels ? new ol.style.Text({
-                        text: labelText,
-                        offsetY: -25, // Adjusted to fit two lines
+                        text: `${point.intensity}`,
+                        offsetY: -15,
                         font: 'bold 11px sans-serif',
                         fill: new ol.style.Fill({ color: '#fff' }),
-                        stroke: new ol.style.Stroke({ color: '#000', width: 3 }),
-                        textAlign: 'center'
+                        stroke: new ol.style.Stroke({ color: '#000', width: 3 })
                     }) : null
                 }));
                 trackSource.addFeature(marker);
             });
         }
 
+        // Click interaction for Pop-up
+        map.on('singleclick', function (evt) {
+            const feature = map.forEachFeatureAtPixel(evt.pixel, f => f);
+            if (feature && feature.get('stormInfo')) {
+                const info = feature.get('stormInfo');
+                content.innerHTML = `
+                    <span class="popup-title">Storm Info (${info.status})</span>
+                    <div class="popup-item"><b>Time:</b> ${info.time}</div>
+                    <div class="popup-item"><b>Intensity:</b> ${info.intensity} km/h</div>
+                    <div class="popup-item"><b>Coords:</b> ${info.coords[1]}°N, ${info.coords[0]}°E</div>
+                `;
+                overlay.setPosition(evt.coordinate);
+            } else {
+                overlay.setPosition(undefined);
+            }
+        });
+
         document.getElementById('toggle-labels').onchange = drawTrack;
-
         drawTrack();
-
-        fetch('https://api.rainviewer.com/public/weather-maps.json')
-           .then(response => response.json())
-           .then(data => {
-               const latestFrame = data.radar.past[data.radar.past.length - 1];
-               const radarLayer = new ol.layer.Tile({
-                   source: new ol.source.XYZ({
-                       url: data.host + latestFrame.path + '/1024/{z}/{x}/{y}/7/1_0.png'
-                   }),
-                   opacity: 0.5
-               });
-               map.getLayers().insertAt(1, radarLayer);
-           });
+	fetch('https://api.rainviewer.com/public/weather-maps.json')
+	   .then(response => response.json())
+	   .then(data => {
+	       const latestFrame = data.radar.past[data.radar.past.length - 1];
+	       const radarLayer = new ol.layer.Tile({
+	           source: new ol.source.XYZ({
+	               url: data.host + latestFrame.path + '/1024/{z}/{x}/{y}/7/1_0.png'
+	           }),
+	           opacity: 0.6
+	       });
+	       map.addLayer(radarLayer);
+	   })
+	   .catch(err => console.error("Radar failed to load:", err));
     </script>
 </body>
 </html>
