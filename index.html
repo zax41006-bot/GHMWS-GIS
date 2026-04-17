@@ -37,7 +37,9 @@
 	           source: new ol.source.XYZ({
 	               url: data.host + latestFrame.path + '/1024/{z}/{x}/{y}/2/1_1.png'
 	           }),
-	           opacity: 0.6
+	           opacity: 0.6,
+			   crossOrigin: 'anonymous',
+			   maxZoom:7
 	       });
 	       map.addLayer(radarLayer);
 	   })
