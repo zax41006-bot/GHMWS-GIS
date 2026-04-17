@@ -18,7 +18,19 @@
     <!-- Pop-up HTML Structure -->
     <script>
         const lonLat = [114.1745, 22.3025];
-        
+        步驟)
+        const map = new ol.Map({
+            target: 'map',
+            layers: [
+                new ol.layer.Tile({
+                    source: new ol.source.OSM() // 基礎底圖
+                })
+            ],
+            view: new ol.view.View({
+                center: ol.proj.fromLonLat([114.1745, 22.3025]), // 香港座標
+                zoom: 5
+            })
+        });
         // Added 'time' property to your data
 	fetch('https://api.rainviewer.com/public/weather-maps.json')
 	   .then(response => response.json())
