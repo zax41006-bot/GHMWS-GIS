@@ -35,10 +35,9 @@
 	       const radarLayer = new ol.layer.Tile({
 	           source: new ol.source.XYZ({
 	               url: data.host + latestFrame.path + '/1024/{z}/{x}/{y}/2/1_1.png'
-	           }),
+	           ,maxZoom: 7}),
 			   crossOrigin: 'anonymous',
 			   opacity: 0.5,
-               maxZoom: 20,
                zIndex: 100 
 	       });
 	       map.addLayer(radarLayer);
