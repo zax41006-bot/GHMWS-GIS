@@ -47,7 +47,7 @@
         });
 
         // 2. 從 RainViewer 獲取最新的雷達圖層
-        fetch('https://rainviewer.com')
+        fetch('https://https://api.rainviewer.com/public/weather-maps.json')
             .then(response => response.json())
             .then(data => {
                 // 獲取最後一幀 (最新的雷達影像)
