@@ -6,45 +6,73 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@v10.8.0/ol.css">
     <script src="https://cdn.jsdelivr.net/npm/ol@v10.8.0/dist/ol.js"></script>
     <style>
-        body, html { margin: 0; padding: 0; height: 100%; width: 100%; overflow: hidden; background: #0b1621; }
-        #map { position: absolute; top: 0; bottom: 0; width: 100%; height: 100%; }
+        /* 確保地圖填滿整個螢幕 */
+        body, html { 
+            margin: 0; 
+            padding: 0; 
+            height: 100%; 
+            width: 100%; 
+            overflow: hidden; 
+            background: #0b1621; 
+        }
+        #map { 
+            position: absolute; 
+            top: 0; 
+            bottom: 0; 
+            width: 100%; 
+            height: 100%;
+        }
     </style>
 </head>
 <body>
+
     <div id="map"></div>
 
     <script>
-        // 1. 先初始化地圖 (這是你原本漏掉的最重要步驟)
+        // 1. 初始化地圖
         const map = new ol.Map({
-    target: 'map',
-    layers: [
-        new ol.layer.Tile({ source: new ol.source.OSM() })
-    ],
-    view: new ol.view.View({
-        center: ol.proj.fromLonLat([114.1745, 22.3025]),
-        zoom: 5,
-        maxZoom: 15 // 地圖允許縮放到 15
-    })
-});
-
-// 2. 獲取雷達數據
-fetch('https://rainviewer.com')
-    .then(response => response.json())
-    .then(data => {
-        const latestFrame = data.radar.past[data.radar.past.length - 1];
-        
-        const radarLayer = new ol.layer.Tile({
-            source: new ol.source.XYZ({
-                url: data.host + latestFrame.path + '/512/{z}/{x}/{y}/2/1_1.png',
-                // 關鍵設定：告訴 OpenLayers 雷達圖片最高只到第 7 級
-                // 超過 7 級時，它會自動放大（Upscale）現有的圖片，不會報 404 錯誤
-                maxZoom: 7 
-            }),
-            opacity: 0.6
+            target: 'map',
+            layers: [
+                // 基礎底圖 (OSM)
+                new ol.layer.Tile({
+                    source: new ol.source.OSM()
+                })
+            ],
+            view: new ol.view.View({
+                // 設定香港為中心點 [經度, 緯度]
+                center: ol.proj.fromLonLat([114.1745, 22.3025]), 
+                zoom: 5,
+                maxZoom: 15 // 地圖視圖最大可縮放至 15 級
+            })
         });
 
-        map.addLayer(radarLayer);
-    });
+        // 2. 從 RainViewer 獲取最新的雷達圖層
+        fetch('https://rainviewer.com')
+            .then(response => response.json())
+            .then(data => {
+                // 獲取最後一幀 (最新的雷達影像)
+                const latestFrame = data.radar.past[data.radar.past.length - 1];
+                
+                const radarLayer = new ol.layer.Tile({
+                    source: new ol.source.XYZ({
+                        // RainViewer API URL
+                        // 參數說明：/512/ 代表圖片大小，/2/ 代表顏色方案 (平滑顏色)，/1_1.png/ 代表渲染選項
+                        url: data.host + latestFrame.path + '/512/{z}/{x}/{y}/2/1_1.png',
+                        
+                        // 【關鍵修復】: 設定 source 的 maxZoom 為 7
+                        // 這樣當地圖縮放到 8~15 級時，OpenLayers 會拉伸第 7 級的圖片，
+                        // 而不會去抓取不存在的圖片，避免 404 錯誤。
+                        maxZoom: 7 
+                    }),
+                    opacity: 0.6 // 設定透明度讓底圖可見
+                });
+
+                // 將雷達圖層加到地圖中
+                map.addLayer(radarLayer);
+            })
+            .catch(err => {
+                console.error("雷達數據加載失敗:", err);
+            });
     </script>
 </body>
 </html>
