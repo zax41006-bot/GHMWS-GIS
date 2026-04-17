@@ -1,4 +1,4 @@
-<<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -25,29 +25,21 @@
 
         // 強化版 Fetch
         fetch('https://api.rainviewer.com/public/weather-maps.json')
-            .then(res => {
-                if (!res.ok) throw new Error(`HTTP Error: ${res.status}`);
-                return res.json();
-            })
+            .then(res => res.json())
             .then(data => {
-                const latest = data.radar.past[data.radar.past.length - 1];
-                const radarLayer = new ol.layer.Tile({
-                    source: new ol.source.XYZ({
-                        url: data.host + latest.path + '/1024/{z}/{x}/{y}/2/1_1.png',
-                        maxZoom: 7,
-                        // 關鍵：處理跨域圖片權限
-                        crossOrigin: 'anonymous' 
-                    }),
-                    opacity: 0.6
-                });
-                map.addLayer(radarLayer);
-                console.log("Success: Radar loaded from " + data.host);
+                const latest = data.radar.past.pop();
+                const radarUrl = `${data.host}${latest.path}/1024/{z}/{x}/{y}/2/1_1.png`;
+                
+                if (window.radarLayer) map.removeLayer(window.radarLayer);
+                
+                window.radarLayer = L.tileLayer(radarUrl, { 
+                    opacity: 0.5,
+                    maxZoom: 15,
+                    maxNativeZoom: 7,
+                    zIndex: 100 
+                }).addTo(map);
             })
-            .catch(err => {
-                // 如果被攔截，這裡會顯示具體原因
-                alert("Load Error: 請檢查是否開啟了 AdBlock 或 VPN，並確保使用 http 伺服器開啟網頁。");
-                console.error("Detailed Error:", err);
-            });
+            .catch(err => console.error("Radar failed:", err));
     </script>
 </body>
 </html>
