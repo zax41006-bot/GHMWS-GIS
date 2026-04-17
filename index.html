@@ -13,9 +13,14 @@
 <body>
     <div id="map"></div>
     <script>
+        // 1. 初始化 OpenLayers 地圖
         const map = new ol.Map({
             target: 'map',
-            layers: [new ol.layer.Tile({ source: new ol.source.OSM() })],
+            layers: [
+                new ol.layer.Tile({ 
+                    source: new ol.source.OSM() 
+                })
+            ],
             view: new ol.view.View({
                 center: ol.proj.fromLonLat([114.1745, 22.3025]),
                 zoom: 5,
@@ -23,21 +28,25 @@
             })
         });
 
-        // 強化版 Fetch
+        // 2. 獲取 RainViewer 數據
         fetch('https://api.rainviewer.com/public/weather-maps.json')
             .then(res => res.json())
             .then(data => {
-                const latest = data.radar.past.pop();
-                const radarUrl = `${data.host}${latest.path}/1024/{z}/{x}/{y}/2/1_1.png`;
+                const latest = data.radar.past.pop(); // 取得最新一幀
                 
-                if (window.radarLayer) map.removeLayer(window.radarLayer);
-                
-                window.radarLayer = L.tileLayer(radarUrl, { 
+                // 3. 使用 OpenLayers 的方式創建雷達圖層 (不再使用 L.tileLayer)
+                const radarLayer = new ol.layer.Tile({
                     opacity: 0.5,
-                    maxZoom: 15,
-                    maxNativeZoom: 7,
-                    zIndex: 100 
-                }).addTo(map);
+                    source: new ol.source.XYZ({
+                        url: `${data.host}${latest.path}/512/{z}/{x}/{y}/2/1_1.png`,
+                        maxZoom: 7 // 這是雷達圖的最大原生縮放級別，設為 7 可防止 404 錯誤
+                    })
+                });
+
+                // 4. 將圖層添加到 OpenLayers 地圖中
+                map.addLayer(radarLayer);
+                
+                console.log("Radar loaded successfully");
             })
             .catch(err => console.error("Radar failed:", err));
     </script>
