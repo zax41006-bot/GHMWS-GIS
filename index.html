@@ -39,7 +39,9 @@
                     opacity: 0.5,
                     source: new ol.source.XYZ({
                         url: `${data.host}${latest.path}/512/{z}/{x}/{y}/2/1_1.png`,
-                        maxZoom: 7 // 這是雷達圖的最大原生縮放級別，設為 7 可防止 404 錯誤
+                        maxZoom: 7,
+                        crossOrigin: 'anonymous' 
+                        // 這是雷達圖的最大原生縮放級別，設為 7 可防止 404 錯誤
                     })
                 });
 
