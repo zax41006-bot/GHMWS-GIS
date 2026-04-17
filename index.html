@@ -6,70 +6,47 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@v10.8.0/ol.css">
     <script src="https://cdn.jsdelivr.net/npm/ol@v10.8.0/dist/ol.js"></script>
     <style>
-        body, html { 
-            margin: 0; 
-            padding: 0; 
-            height: 100%; 
-            width: 100%; 
-            overflow: hidden; 
-            background: #0b1621; 
-        }
-        #map { 
-            position: absolute; 
-            top: 0; 
-            bottom: 0; 
-            width: 100%; 
-            height: 100%;
-        }
+        body, html { margin: 0; padding: 0; height: 100%; width: 100%; background: #0b1621; }
+        #map { position: absolute; top: 0; bottom: 0; width: 100%; height: 100%; }
     </style>
 </head>
 <body>
-
     <div id="map"></div>
-
     <script>
-        // 1. 初始化地圖
         const map = new ol.Map({
             target: 'map',
-            layers: [
-                new ol.layer.Tile({
-                    source: new ol.source.OSM()
-                })
-            ],
+            layers: [new ol.layer.Tile({ source: new ol.source.OSM() })],
             view: new ol.view.View({
-                center: ol.proj.fromLonLat([114.1745, 22.3025]), 
+                center: ol.proj.fromLonLat([114.1745, 22.3025]),
                 zoom: 5,
-                maxZoom: 15 
+                maxZoom: 15
             })
         });
 
-        // 2. 從 RainViewer 獲取數據
-        // 注意：這裡修正了多餘的 https://
+        // 強化版 Fetch
         fetch('https://api.rainviewer.com/public/weather-maps.json')
-            .then(response => {
-                if (!response.ok) throw new Error("Network response was not ok");
-                return response.json();
+            .then(res => {
+                if (!res.ok) throw new Error(`HTTP Error: ${res.status}`);
+                return res.json();
             })
             .then(data => {
-                // 安全檢查，防止 null 錯誤
-                if (!data || !data.radar || !data.radar.past) return;
-
-                const latestFrame = data.radar.past[data.radar.past.length - 1];
-                
+                const latest = data.radar.past[data.radar.past.length - 1];
                 const radarLayer = new ol.layer.Tile({
-                    // 這裡設定 maxZoom 確保圖層在縮放超過 7 時不會消失
-                    maxZoom: 15, 
                     source: new ol.source.XYZ({
-                        url: data.host + latestFrame.path + '/1024/{z}/{x}/{y}/2/1_1.png',
-                        maxZoom: 7 // 數據源的最大級別
+                        url: data.host + latest.path + '/1024/{z}/{x}/{y}/2/1_1.png',
+                        maxZoom: 7,
+                        // 關鍵：處理跨域圖片權限
+                        crossOrigin: 'anonymous' 
                     }),
                     opacity: 0.6
                 });
-
                 map.addLayer(radarLayer);
+                console.log("Success: Radar loaded from " + data.host);
             })
             .catch(err => {
-                console.error("雷達數據加載失敗:", err);
+                // 如果被攔截，這裡會顯示具體原因
+                alert("Load Error: 請檢查是否開啟了 AdBlock 或 VPN，並確保使用 http 伺服器開啟網頁。");
+                console.error("Detailed Error:", err);
             });
     </script>
 </body>
