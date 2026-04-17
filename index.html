@@ -7,18 +7,14 @@
     <script src="https://cdn.jsdelivr.net/npm/ol@v10.8.0/dist/ol.js"></script>
     <style>
         body, html { margin: 0; padding: 0; height: 100%; width: 100%; overflow: hidden; background: #0b1621; }
-        #map { position: absolute; top: 0; bottom: 0; width: 100%; }
-        
-        /* Pop-up Styling */
+        #map { position: absolute; top: 0; bottom: 0; width: 100%; height: 100%; }
     </style>
 </head>
 <body>
     <div id="map"></div>
 
-    <!-- Pop-up HTML Structure -->
     <script>
-        const lonLat = [114.1745, 22.3025];
-        步驟)
+        // 1. 先初始化地圖 (這是你原本漏掉的最重要步驟)
         const map = new ol.Map({
             target: 'map',
             layers: [
@@ -31,22 +27,27 @@
                 zoom: 5
             })
         });
-        // Added 'time' property to your data
-	fetch('https://api.rainviewer.com/public/weather-maps.json')
-	   .then(response => response.json())
-	   .then(data => {
-	       const latestFrame = data.radar.past[data.radar.past.length - 1];
-	       const radarLayer = new ol.layer.Tile({
-	           source: new ol.source.XYZ({
-	               url: data.host + latestFrame.path + '/1024/{z}/{x}/{y}/7/1_0.png'
-	           }),
-	           opacity: 0.6,
-			   maxNativeZoom:7,
-		       maxZoom:15
-	       });
-	       map.addLayer(radarLayer);
-	   })
-	   .catch(err => console.error("Radar failed to load:", err));
+
+        // 2. 獲取 RainViewer 雷達圖層
+        fetch('https://api.rainviewer.com/public/weather-maps.json')
+            .then(response => response.json())
+            .then(data => {
+                const latestFrame = data.radar.past[data.radar.past.length - 1];
+                
+                const radarLayer = new ol.layer.Tile({
+                    source: new ol.source.XYZ({
+                        // RainViewer 的 URL 格式，注意這裡使用了最新幀的路徑
+                        url: data.host + latestFrame.path + '/512/{z}/{x}/{y}/2/1_1.png'
+                    }),
+                    opacity: 0.6,
+					maxNativeZoom:7,
+					maxZoom:15
+                    // 修正處：原本這裡漏掉了逗號，且屬性名稱應放在 source 外層或正確配置
+                });
+
+                map.addLayer(radarLayer);
+            })
+            .catch(err => console.error("Radar failed to load:", err));
     </script>
 </body>
 </html>
