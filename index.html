@@ -87,7 +87,7 @@ var isLoading = false;
 var layerCache = {};
 
 // === MAP SETUP ===
-var map = L.map('mapid', {  zoomSnap: 0.25,zoomDelta: 0.25,wheelPxPerZoomLevel: 120, maxZoom: 16 }).setView([22.4, 114], 5);
+var map = L.map('mapid', {  smoothWheelZoom: true,smoothSensitivity: 1,zoomSnap: 0, maxZoom: 16 }).setView([22.4, 114], 5);
 
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '&copy; <a href="https://openstreetmap.org">OpenStreetMap</a> contributors'
