@@ -72,7 +72,7 @@
 
 <script>
 // === CONFIGURATION ===
-var TILE_SIZE = window.devicePixelRatio >= 3 ? 1024: 512 : 256;
+var TILE_SIZE = window.devicePixelRatio >= 2 ? 512 : 256;
 var RADAR_OPACITY = 0.8;
 var ANIMATION_DELAY_MS = 500;
 var API_URL = "https://api.rainviewer.com/public/weather-maps.json";
@@ -111,7 +111,7 @@ function formatTime(timestamp) {
 // === LAYER MANAGEMENT ===
 function createRadarLayer(frame) {
     return new L.TileLayer(apiData.host + frame.path + '/' + TILE_SIZE + '/{z}/{x}/{y}/2/1_1.png', {
-        tileSize: 512,
+        tileSize: 256,
         opacity: 0.001,
         maxNativeZoom: 7,
         maxZoom: 16
