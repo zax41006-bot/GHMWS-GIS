@@ -54,6 +54,50 @@
             bottom: 0;
             right: 0;
         }
+
+        .radar-legend {
+            position: absolute;
+            bottom: 30px;
+            right: 20px; 
+            background: #f4f7f8;
+            padding: 10px 15px;
+            border-radius: 6px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            z-index: 1000;
+            width: 320px;
+            font-family: sans-serif;
+            pointer-events: none;
+        }
+        .radar-legend-header {
+            display: flex;
+            justify-content: space-between;
+            font-weight: 700;
+            font-size: 14px;
+            color: #4a4a4a;
+            margin-bottom: 8px;
+        }
+        .radar-legend-bar {
+            height: 12px;
+            border-radius: 2px;
+            background: linear-gradient(to right,
+                #928871 0%,   #ded097 14.28%, 
+                #88ddee 14.28%, #004768 42.85%, 
+                #ffee00 42.85%, #ff8100 57.14%, 
+                #ff4400 57.14%, #5d0000 71.42%, 
+                #ffaaff 71.42%, #ff4eff 85.71%, 
+                #ffffff 85.71%, #ffffff 98.5%,  
+                #00ff00 98.5%,  #00ff00 100%    
+            );
+            border: 1px solid rgba(0,0,0,0.08);
+        }
+        .radar-legend-ticks {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 6px;
+            font-weight: 700;
+            font-size: 13px;
+            color: #555;
+        }
     </style>
 </head>
 <body>
@@ -70,14 +114,23 @@
 
 <div id="mapid"></div>
 
+<div class="radar-legend">
+    <div class="radar-legend-header">
+        <span>雷達圖例</span>
+        <span>dBZ</span>
+    </div>
+    <div class="radar-legend-bar"></div>
+    <div class="radar-legend-ticks">
+        <span>5</span><span>15</span><span>25</span><span>35</span><span>45</span><span>55</span><span>65</span><span>75</span>
+    </div>
+</div>
+
 <script>
-// === CONFIGURATION ===
 var TILE_SIZE = 1024;
 var RADAR_OPACITY = 0.8;
 var ANIMATION_DELAY_MS = 500;
 var API_URL = "https://api.rainviewer.com/public/weather-maps.json";
 
-// === STATE ===
 var apiData = {};
 var mapFrames = [];
 var animationPosition = 0;
@@ -86,14 +139,12 @@ var currentLayer = null;
 var isLoading = false;
 var layerCache = {};
 
-// === MAP SETUP ===
 var map = L.map('mapid', {  smoothWheelZoom: true,smoothSensitivity: 2,zoomSnap: 0, maxZoom: 16 }).setView([22.4, 114], 5);
 
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '&copy; <a href="https://openstreetmap.org">OpenStreetMap</a> contributors'
 }).addTo(map);
 
-// === UTILITIES ===
 function wrapPosition(position) {
     while (position >= mapFrames.length) {
         position -= mapFrames.length;
@@ -108,7 +159,6 @@ function formatTime(timestamp) {
     return new Date(timestamp * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
-// === LAYER MANAGEMENT ===
 function createRadarLayer(frame) {
     return new L.TileLayer(apiData.host + frame.path + '/' + TILE_SIZE + '/{z}/{x}/{y}/2/1_1.png', {
         tileSize: 256,
@@ -128,7 +178,6 @@ function clearLayerCache() {
     }
 }
 
-// === ANIMATION CONTROL ===
 function stop() {
     if (animationTimer) {
         clearTimeout(animationTimer);
@@ -151,7 +200,6 @@ function playStop() {
     }
 }
 
-// === DISPLAY ===
 function updateTimestamp(frame) {
     document.getElementById("timestamp").innerHTML = formatTime(frame.time);
 }
@@ -202,7 +250,6 @@ function showFrame(position) {
     newLayer.addTo(map);
 }
 
-// === INITIALIZATION ===
 function initialize(api) {
     clearLayerCache();
     currentLayer = null;
