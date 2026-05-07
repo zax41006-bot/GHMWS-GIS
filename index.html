@@ -7,8 +7,6 @@
     <link href="https://unpkg.com/leaflet/dist/leaflet.css" rel="stylesheet"/>
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link href='https://mapbox.com' rel='stylesheet' />
-    <script src='https://mapbox.com'></script>
     <style>
         body { margin: 0; font-family: sans-serif; }
         .controls {
@@ -142,10 +140,7 @@ var currentLayer = null;
 var isLoading = false;
 var layerCache = {};
 
-var map = L.map('mapid', {fullscreenControl: true, // This adds the [ ] button
-    fullscreenControlOptions: {
-        position: 'bottomleft'
-    },smoothWheelZoom: true,smoothSensitivity: 2,zoomSnap: 0, maxZoom: 16 }).setView([22.4, 114], 5);
+var map = L.map('mapid', {fullscreenControl: true, smoothWheelZoom: true,smoothSensitivity: 2,zoomSnap: 0, maxZoom: 16 }).setView([22.4, 114], 5);
 
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '&copy; <a href="https://openstreetmap.org">OpenStreetMap</a> contributors'
@@ -202,7 +197,7 @@ map.on('click', async function(e) {
                 // 4. Create Popup Content
             const popupDiv = document.createElement('div');
             popupDiv.className = 'chart-container';
-            popupDiv.innerHTML = `<canvas id="ensembleChart"></canvas>`;
+            popupDiv.innerHTML = `<canvas id="ECMWF ensembleChart"></canvas>`;
 
             L.popup()
                 .setLatLng(e.latlng)
