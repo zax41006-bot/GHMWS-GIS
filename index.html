@@ -6,6 +6,7 @@
     <meta content="width=device-width, initial-scale=1.0" name="viewport">
     <link href="https://unpkg.com/leaflet/dist/leaflet.css" rel="stylesheet"/>
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body { margin: 0; font-family: sans-serif; }
         .controls {
@@ -144,6 +145,70 @@ var map = L.map('mapid', {  smoothWheelZoom: true,smoothSensitivity: 2,zoomSnap:
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '&copy; <a href="https://openstreetmap.org">OpenStreetMap</a> contributors'
 }).addTo(map);
+
+map.on('click', async function(e) {
+    const { lat, lng } = e.latlng;
+    const url = `https://ensemble-api.open-meteo.com/v1/ensemble?latitude=${lat}&longitude=${lng}&hourly=temperature_2m&models=ecmwf_ifs025_ensemble`;
+
+    try {
+            const response = await fetch(url);
+            const data = await response.json();
+
+                // 3. Process the dynamic "member" keys
+            const timeLabels = data.hourly.time.map(t => t.replace('T', ' '));
+            const memberKeys = Object.keys(data.hourly).filter(key => key.includes('member'));
+
+                // Build datasets for the chart
+            const datasets = memberKeys.map((key, index) => {
+                const isFirst = index === 0;
+                return {
+                    label: isFirst ? 'Ensemble Members' : '', // Label only once
+                    data: data.hourly[key],
+                    borderColor: isFirst ? 'rgba(255, 99, 132, 0.8)' : 'rgba(54, 162, 235, 0.1)',
+                    borderWidth: isFirst ? 2 : 1,
+                    pointRadius: 0,
+                    fill: false
+                };
+            });
+
+                // 4. Create Popup Content
+            const popupDiv = document.createElement('div');
+            popupDiv.className = 'chart-container';
+            popupDiv.innerHTML = `<canvas id="ensembleChart"></canvas>`;
+
+            L.popup()
+                .setLatLng(e.latlng)
+                .setContent(popupDiv)
+                .openOn(map);
+
+                // 5. Initialize Chart.js
+            const ctx = document.getElementById('ensembleChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: timeLabels,
+                    datasets: datasets
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { intersect: false, mode: 'index' },
+                    plugins: {
+                        legend: { display: false },
+                        title: { display: true, text: `Temp Ensemble (${lat.toFixed(2)}, ${lng.toFixed(2)})` }
+                    },
+                    scales: {
+                        x: { ticks: { maxTicksLimit: 6 } },
+                        y: { title: { display: true, text: '°C' } }
+                    }
+                }
+            });
+
+        } catch (err) {
+            console.error("Error fetching weather data:", err);
+            L.popup().setLatLng(e.latlng).setContent("Failed to load data").openOn(map);
+        }
+    });
 
 function wrapPosition(position) {
     while (position >= mapFrames.length) {
