@@ -3,7 +3,7 @@
 <head>
     <title>GHMWS-GIS (beta version)</title>
     <meta charset="utf-8"/>
-    <meta content="width=device-width, initial-scale=1.0" name="viewport">
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" content="width=device-width, initial-scale=1.0">
     <link href="https://unpkg.com/leaflet/dist/leaflet.css" rel="stylesheet"/>
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -101,6 +101,13 @@
             font-size: 13px;
             color: #555;
         }
+        .leaflet-popup-content-wrapper {
+            padding: 5px;
+        }
+        .chart-container {
+            width: 280px; /* Slightly narrower for mobile/iframes */
+            height: 180px;
+        }
     </style>
 </head>
 <body>
@@ -152,6 +159,27 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '&copy; <a href="https://openstreetmap.org">OpenStreetMap</a> contributors'
 }).addTo(map);
 
+const ReturnControl = L.Control.extend({
+    options: { position: 'topleft' },
+    onAdd: function() {
+        const btn = L.DomUtil.create('div', 'custom-control');
+        btn.innerHTML = '🏠 Return to Frame';
+        btn.onclick = function() {
+            // 1. Exit fullscreen if active
+            if (document.fullscreenElement || document.webkitFullscreenElement) {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                } else if (document.webkitExitFullscreen) {
+                    document.webkitExitFullscreen(); // For Safari/iOS
+                }
+            }
+            
+            // 2. Reset the map view to original coordinates
+            map.setView([22.3, 114.1], 10);
+        };
+        return btn;
+    }
+});
 
 map.on('click', async function(e) {
     const { lat, lng } = e.latlng;
